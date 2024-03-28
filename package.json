@@ -1,0 +1,15 @@
+{
+  "type": "module",
+  "name": "ldap",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ldapjs": "^3.0.7"
+  }
+}
