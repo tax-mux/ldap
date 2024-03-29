@@ -20,12 +20,23 @@ async function openLdap(url, bind_dn, password) {
     return client;
 }
 
+/**
+ * ldapとの接続を切断する
+ * @param {*} client 
+ */
 async function closeLdap(client) {
     client.unbind((err) => {
         if (err) throw new Error(err);
     });
 }
 
+/**
+ * ldapのノードを検索する
+ * @param {*} client 
+ * @param {*} searchBase 
+ * @param {*} searchFilter 
+ * @returns 
+ */
 async function queryLdap(client, searchBase, searchFilter) {
     if (client === undefined || client === null) {
         throw new Error('client is not defined');
@@ -61,7 +72,12 @@ async function queryLdap(client, searchBase, searchFilter) {
     );
 }
 
-/** 指定したldapのノードにAttributeを登録する */
+/**
+ * 指定したldapのノードにAttributeを登録する
+ * @param {*} client
+ * @param {*} dn
+ * @param {*} change
+ */
 async function changeLdapAttribute(client, dn, change) {
 
     if (client === undefined || client === null) {
@@ -79,21 +95,51 @@ async function changeLdapAttribute(client, dn, change) {
     });
 }
 
+/**
+ * ldapのノードにAttributeを設定する
+ * @param {*} client 
+ * @param {*} dn 
+ * @param {*} attributeName 
+ * @param {*} attributeValues 
+ * @returns 
+ */
 async function setLdapAttribute(client, dn, attributeName, attributeValues) {
     const change = await getChange('replace', attributeName, attributeValues);
     return await changeLdapAttribute(client, dn, change);
 }
 
+/**
+ * ldapのノードにAttributeを追加する
+ * @param {*} client 
+ * @param {*} dn 
+ * @param {*} attributeName 
+ * @param {*} attributeValues 
+ * @returns 
+ */
 async function addLdapAttribute(client, dn, attributeName, attributeValues) {
     const change = await getChange('add', attributeName, attributeValues);
     return await changeLdapAttribute(client, dn, change);
 }
 
+/**
+ * ldapのノードからAttributeを削除する
+ * @param {*} client 
+ * @param {*} dn 
+ * @param {*} attributeName 
+ * @returns 
+ */
 async function removeLdapAttribute(client, dn, attributeName) {
     const change = await getChange('delete', attributeName, []);
     return await changeLdapAttribute(client, dn, change);
 }
 
+/**
+ * 変更内容をペイロードに格納し、取得する。
+ * @param {*} operation 
+ * @param {*} attributeName 
+ * @param {*} attributeValues 
+ * @returns 
+ */
 async function getChange(operation, attributeName, attributeValues) {
     return new ldap.Change({
         operation: operation,
