@@ -3,6 +3,13 @@ import ldap from 'ldapjs';
 
 dotenv.config();
 
+/**
+ * ldapに接続する
+ * @param {*} url サーバのURL
+ * @param {*} bind_dn バインドに使用するDN
+ * @param {*} password バインドに使用するパスワード
+ * @returns client
+ */
 async function openLdap(url, bind_dn, password) {
     const client = ldap.createClient({ url: url });
     client.bind(bind_dn, password, (err) => {
