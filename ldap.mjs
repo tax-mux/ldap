@@ -151,7 +151,64 @@ async function getChange(operation, attributeName, attributeValues) {
 
 }
 
-export default{
-    addLdapAttribute, closeLdap, openLdap, queryLdap, removeLdapAttribute, setLdapAttribute
+/**
+ * LDAPサーバーに新しいエントリを追加する
+ * @param {*} client LDAPクライアントオブジェクト
+ * @param {*} dn 新しいエントリの識別名（Distinguished Name）
+ * @param {*} entry 新しいエントリの属性を含むオブジェクト(JSON形式)
+ * @returns Promise
+ */
+async function addLdapEntry(client, dn, entry) {
+    return new Promise((resolve, reject) => {
+        client.add(dn, entry, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
+/**
+ * LDAPエントリを削除する
+ * @param {*} client LDAPクライアントオブジェクト
+ * @param {*} dn 削除するエントリの識別名（Distinguished Name）
+ * @returns Promise
+ */
+async function removeLdapEntry(client, dn) {
+    return new Promise((resolve, reject) => {
+        client.del(dn, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
+/**
+ * LDAPエントリのDistinguished Name（DN）を変更する
+ * @param {*} client LDAPクライアントオブジェクト
+ * @param {*} oldDn 変更前のエントリの識別名（Distinguished Name）
+ * @param {*} newRdn 新しいRelative Distinguished Name（RDN）
+ * @param {*} newParent 新しい親エントリのDN
+ * @returns Promise
+ */
+async function modifyLdapDn(client, oldDn, newRdn, newParent) {
+    return new Promise((resolve, reject) => {
+        client.modifyDN(oldDn, newRdn, newParent, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
+export default {
+    modifyLdapDn, addLdapEntry, removeLdapEntry, addLdapAttribute, closeLdap, openLdap, queryLdap, removeLdapAttribute, setLdapAttribute
 };
 
