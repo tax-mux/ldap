@@ -38,6 +38,7 @@ async function closeLdap(client) {
  * @returns 
  */
 async function queryLdap(client, searchBase, searchFilter) {
+
     if (client === undefined || client === null) {
         throw new Error('client is not defined');
     }
@@ -80,19 +81,24 @@ async function queryLdap(client, searchBase, searchFilter) {
  */
 async function changeLdapAttribute(client, dn, change) {
 
-    if (client === undefined || client === null) {
-        throw new Error('client is not defined');
-    }
+    if (await isExist(client, dn)) {
 
-    return new Promise((resolve, reject) => {
-        client.modify(dn, change, (err) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
+        if (client === undefined || client === null) {
+            throw new Error('client is not defined');
+        }
+
+        return new Promise((resolve, reject) => {
+            client.modify(dn, change, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
         });
-    });
+    } else {
+        return;
+    }
 }
 
 /**
@@ -159,15 +165,19 @@ async function getChange(operation, attributeName, attributeValues) {
  * @returns Promise
  */
 async function addLdapEntry(client, dn, entry) {
-    return new Promise((resolve, reject) => {
-        client.add(dn, entry, (err) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
+    if (await isExist(client, dn)) {
+        return new Promise((resolve, reject) => {
+            client.add(dn, entry, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
         });
-    });
+    } else {
+        return;
+    }
 }
 
 /**
@@ -177,15 +187,17 @@ async function addLdapEntry(client, dn, entry) {
  * @returns Promise
  */
 async function removeLdapEntry(client, dn) {
-    return new Promise((resolve, reject) => {
-        client.del(dn, (err) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
+    if (await isExist(client, dn)) {
+        return new Promise((resolve, reject) => {
+            client.del(dn, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
         });
-    });
+    }
 }
 
 /**
@@ -202,6 +214,29 @@ async function moveLdapEntry(client, oldDn, newDn) {
                 reject(err);
             } else {
                 resolve();
+            }
+        });
+    });
+}
+
+/**
+ * 指定したDNのエントリが存在するかどうかを確認する 
+ * @param {*} client 
+ * @param {*} askDn 
+ * @returns 
+ */
+async function isExist(client, askDn) {
+    return new Promise((resolve, reject) => {
+        client.search(askDn, { scope: 'base' }, (err, res) => {
+            if (err) {
+                reject(err);
+            } else {
+                res.on('searchEntry', (entry) => {
+                    resolve(true);
+                });
+                res.on('end', () => {
+                    resolve(false);
+                });
             }
         });
     });

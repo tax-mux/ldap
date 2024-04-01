@@ -11,6 +11,7 @@ const client = await ldap.openLdap(
 
 
 await ldap.removeLdapEntry(client, process.env.TEST_MODIFY_DN);
+await ldap.removeLdapEntry(client, process.env.TEST_MOVE_DN);
 
 const result = await ldap.queryLdap(
     client,
