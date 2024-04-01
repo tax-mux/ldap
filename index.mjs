@@ -9,6 +9,9 @@ const client = await ldap.openLdap(
     process.env.LDAP_BIND_PASSWORD
 );
 
+
+await ldap.removeLdapEntry(client, process.env.TEST_MODIFY_DN);
+
 const result = await ldap.queryLdap(
     client,
     process.env.TEST_SEARCH_BASE,
@@ -20,6 +23,18 @@ for (const entry of result) {
         console.log(attribute.type, attribute.values);
     }
 }
+
+await ldap.addLdapEntry(
+    client,
+    process.env.TEST_APPEND_DN,
+    {
+        cn: "Test User",
+        sn: "User",
+        telephoneNumber: "0120-123-456",
+        mail: "test_user@test.domain",
+        objectClass: ["top", "inetOrgPerson"]
+    }
+);
 
 await ldap.setLdapAttribute(
     client,
@@ -41,5 +56,11 @@ await ldap.removeLdapAttribute(
     process.env.TEST_MODIFY_ATTR_NAME
 );
 
-await ldap.closeLdap(client);
+// TODO: Implement moveLdapEntry usually
+await ldap.moveLdapEntry(
+    client,
+    process.env.TEST_MODIFY_DN,
+    process.env.TEST_MOVE_DN
+);
 
+await ldap.closeLdap(client);
