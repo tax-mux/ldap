@@ -6,17 +6,18 @@ dotenv.config();
 /**
  * ldapに接続する
  * @param {*} url サーバのURL
- * @param {*} bind_dn バインドに使用するDN
+ * @param {*} bindDn バインドに使用するDN
  * @param {*} password バインドに使用するパスワード
  * @returns client
  */
-async function openLdap(url, bind_dn, password) {
+async function openLdap(url, baseDn, bindDn, password) {
     const client = ldap.createClient({ url: url });
-    client.bind(bind_dn, password, (err) => {
+    client.bind(bindDn, password, (err) => {
         if (err) {
             throw new Error(err);
         }
     });
+    client.baseDn = baseDn;
     return client;
 }
 
@@ -31,26 +32,22 @@ async function closeLdap(client) {
 }
 
 /**
- * ldapのノードを検索する
+ * ldapのノードを検索する 
  * @param {*} client 
- * @param {*} searchBase 
+ * @param {*} searchDn 
  * @param {*} searchFilter 
+ * @param {*} scope 
  * @returns 
  */
-async function queryLdap(client, searchBase, searchFilter) {
-
-    if (client === undefined || client === null) {
-        throw new Error('client is not defined');
-    }
-
+async function searchLdap(client, searchDn, searchFilter, scope) {
     return new Promise((resolve, reject) => {
 
         const opts = {
             filter: searchFilter,
-            scope: 'sub'
+            scope: scope
         };
 
-        client.search(searchBase, opts, (err, res) => {
+        client.search(searchDn, opts, (err, res) => {
             if (err) {
                 reject(err);
             } else {
@@ -65,12 +62,25 @@ async function queryLdap(client, searchBase, searchFilter) {
                 });
 
                 res.on('error', (err) => {
-                    reject(err);
+                    if (err.lde_message === 'No Such Object') {
+                        resolve([]);
+                    } else {
+                        reject(err);
+                    }
                 });
             }
         });
-    }
-    );
+    });
+}
+
+/**
+ * ldapのノードを検索する
+ * @param {*} client 
+ * @param {*} searchFilter 
+ * @returns 
+ */
+async function queryLdap(client, searchFilter) {
+    return await searchLdap(client, client.baseDn, searchFilter, 'sub');
 }
 
 /**
@@ -81,7 +91,7 @@ async function queryLdap(client, searchBase, searchFilter) {
  */
 async function changeLdapAttribute(client, dn, change) {
 
-    if (await isExist(client, dn)) {
+    if (await isExistEntry(client, dn)) {
 
         if (client === undefined || client === null) {
             throw new Error('client is not defined');
@@ -164,10 +174,10 @@ async function getChange(operation, attributeName, attributeValues) {
  * @param {*} entry 新しいエントリの属性を含むオブジェクト(JSON形式)
  * @returns Promise
  */
-async function addLdapEntry(client, dn, entry) {
-    if (await isExist(client, dn)) {
+async function addLdapEntry(client, targetDn, dnEntry) {
+    if (!await isExistEntry(client, targetDn)) {
         return new Promise((resolve, reject) => {
-            client.add(dn, entry, (err) => {
+            client.add(targetDn, dnEntry, (err) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -176,7 +186,7 @@ async function addLdapEntry(client, dn, entry) {
             });
         });
     } else {
-        return;
+        throw new Error(`entry ${entry} is already exist`);
     }
 }
 
@@ -187,7 +197,7 @@ async function addLdapEntry(client, dn, entry) {
  * @returns Promise
  */
 async function removeLdapEntry(client, dn) {
-    if (await isExist(client, dn)) {
+    if (await isExistEntry(client, dn)) {
         return new Promise((resolve, reject) => {
             client.del(dn, (err) => {
                 if (err) {
@@ -208,15 +218,20 @@ async function removeLdapEntry(client, dn) {
  * @returns Promise
  */
 async function moveLdapEntry(client, oldDn, newDn) {
-    return new Promise((resolve, reject) => {
-        client.modifyDN(oldDn, newDn, (err) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
+    if (await isExistEntry(client, oldDn) && !await isExistEntryByAttribute(client, newDn)) {
+        return new Promise((resolve, reject) => {
+
+            client.modifyDN(oldDn, newDn, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
         });
-    });
+    } else {
+        throw new Error('oldDn is not exist or newDn is exist');
+    }
 }
 
 /**
@@ -225,31 +240,28 @@ async function moveLdapEntry(client, oldDn, newDn) {
  * @param {*} askDn 
  * @returns 
  */
-async function isExist(client, askDn) {
-    return new Promise((resolve, reject) => {
-        client.search(askDn, { scope: 'base' }, (err, res) => {
-            if (err) {
-                reject(err);
-            } else {
-                res.on('searchEntry', (entry) => {
-                    resolve(true);
-                });
-                res.on('end', () => {
-                    resolve(false);
-                });
-            }
-        });
-    });
+async function isExistEntryByAttribute(client, askDn = '*') {
+    const result = await queryLdap(client, askDn);
+    return result.length > 0;
+}
+
+async function isExistEntry(client, askDn) {
+    const result = await searchLdap(client, askDn, '(objectClass=*)', 'base');
+    return result.length > 0;
 }
 
 export default {
-    moveLdapEntry,
-    addLdapEntry,
-    removeLdapEntry,
     addLdapAttribute,
+    addLdapEntry,
+    changeLdapAttribute,
     closeLdap,
+    isExistEntryByAttribute,
+    isExistEntry,
+    moveLdapEntry,
     openLdap,
     queryLdap,
     removeLdapAttribute,
+    removeLdapEntry,
+    searchLdap,
     setLdapAttribute
 };
